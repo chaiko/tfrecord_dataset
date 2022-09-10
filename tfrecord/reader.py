@@ -17,12 +17,8 @@ def tfrecord_iterator(
     index_path: typing.Optional[str] = None,
     shard: typing.Optional[typing.Tuple[int, int]] = None,
     compression_type: typing.Optional[str] = None,
-) -> typing.Iterable[memoryview]:
+) -> typing.Iterable[bytes]:
     """Create an iterator over the tfrecord dataset.
-
-    Since the tfrecords file stores each example as bytes, we can
-    define an iterator over `datum_bytes_view`, which is a memoryview
-    object referencing the bytes.
 
     Params:
     -------
@@ -39,7 +35,7 @@ def tfrecord_iterator(
 
     Yields:
     -------
-    datum_bytes_view: memoryview
+    datum_bytes: bytes
         Object referencing the specified `datum_bytes` contained in the
         file (for a single record).
     """
@@ -73,7 +69,7 @@ def tfrecord_iterator(
                 raise RuntimeError("Failed to read the record.")
             if file.readinto(crc_bytes) != 4:
                 raise RuntimeError("Failed to read the end token.")
-            yield datum_bytes_view
+            yield bytes(datum_bytes_view)
 
     if index_path is None:
         yield from read_records()
@@ -100,7 +96,7 @@ def multi_tfrecord_iterator(data_pattern: str,
                             splits: typing.Dict[str, float],
                             compression_type: typing.Optional[str] = None,
                             infinite: bool = True,
-                            ) -> typing.Iterable[memoryview]:
+                            ) -> typing.Iterable[bytes]:
     """Create an iterator by reading and merging multiple tfrecord datasets.
 
     NOTE: Sharding is currently unavailable for the multi tfrecord loader.

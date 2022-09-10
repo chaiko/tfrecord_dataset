@@ -16,7 +16,7 @@ pip install --editable ./
 
 ## Usage
 
-### Reader & Writer
+### Basic read & write
 
 ```python
 import tfrecord

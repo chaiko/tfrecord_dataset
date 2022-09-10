@@ -1,7 +1,5 @@
 """Iterator utils."""
 
-from __future__ import division
-
 import typing
 import warnings
 
@@ -28,7 +26,7 @@ def sample_iterators(iterators: typing.List[typing.Iterator],
 
     ratios: list of int
         The ratios with which to sample each iterator.
-    
+
     infinite: bool, optional, default=True
         Whether the returned iterator should be infinite or not
 
