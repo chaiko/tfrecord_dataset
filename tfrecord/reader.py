@@ -135,4 +135,4 @@ def multi_tfrecord_iterator(data_pattern: str,
                                  if index_pattern is not None else None,
                              compression_type=compression_type)
            for split in splits.keys()]
-    return sample_iterators(iters, list(splits.values()), infinite=infinite)
+    return iterator_utils.sample_iterators(iters, list(splits.values()), infinite=infinite)

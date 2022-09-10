@@ -36,7 +36,7 @@ class TFRecordDataset(torch.utils.data.IterableDataset):
 
     def __init__(self,
                  data_path: str,
-                 index_path: typing.Union[str, None],
+                 index_path: typing.Optional[str] = None,
                  shuffle_queue_size: typing.Optional[int] = None,
                  transform: typing.Callable[[dict], typing.Any] = None,
                  compression_type: typing.Optional[str] = None,
