@@ -104,3 +104,7 @@ dataset = tfrecord.torch.TFRecordDataset(
 data = next(iter(dataset))
 print(data)
 ```
+
+## Acknowledge
+
+This repo is forked from https://github.com/vahidk/tfrecord.
