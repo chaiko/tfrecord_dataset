@@ -101,13 +101,13 @@ class MultiTFRecordDataset(torch.utils.data.IterableDataset):
 
     def __init__(self,
                  data_pattern: str,
-                 index_pattern: typing.Union[str, None],
+                 index_pattern: typing.Optional[str] = None,
+                 *,
                  splits: typing.Dict[str, float],
                  shuffle_queue_size: typing.Optional[int] = None,
                  transform: typing.Callable[[dict], typing.Any] = None,
                  compression_type: typing.Optional[str] = None,
-                 infinite: bool = True
-                 ) -> None:
+                 infinite: bool = True) -> None:
         super().__init__()
         self.data_pattern = data_pattern
         self.index_pattern = index_pattern
