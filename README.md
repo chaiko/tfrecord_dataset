@@ -27,14 +27,14 @@ writer.write(b'This is a test.')
 writer.close()
 
 for x in tfrecord.tfrecord_iterator('test.tfrecord'):
-  print(bytes(x))
+    print(bytes(x))
 ```
 
 ### Index
 
 It's recommended to create an index file for each TFRecord file. Index file must be provided when using multiple workers, otherwise the loader may return duplicate records.
 ```
-python3 -m tfrecord.tools.tfrecord2idx <tfrecord path> <index path>
+python -m tfrecord.tools.tfrecord2idx <tfrecord path> <index path>
 ```
 
 ### `TFRecordDataset` for PyTorch
@@ -61,10 +61,10 @@ import torch
 from tfrecord.torch.dataset import MultiTFRecordDataset
 
 dataset = MultiTFRecordDataset(
-  data_pattern='test-{}-of-00008',
-  index_pattern='test.idx-{}-of-00008',
-  splits={'00000': 0.8, '00003': 0.2},
-  transform=lambda x: len(x))
+    data_pattern='test-{}-of-00008',
+    index_pattern='test.idx-{}-of-00008',
+    splits={'00000': 0.8, '00003': 0.2},
+    transform=lambda x: len(x))
 loader = torch.utils.data.DataLoader(dataset, batch_size=8)
 
 data = next(iter(loader))
@@ -94,20 +94,12 @@ This can for example be used to decode images or normalize colors to a certain r
 import tfrecord
 import cv2
 
-def decode_image(features):
+def decode_image(data):
     # get BGR image from bytes
-    features["image"] = cv2.imdecode(features["image"], -1)
-    return features
+    return {'image':  cv2.imdecode(data, -1)}
 
-
-description = {
-    "image": "bytes",
-}
-
-dataset = tfrecord.torch.TFRecordDataset("/tmp/data.tfrecord",
-                                         index_path=None,
-                                         description=description,
-                                         transform=decode_image)
+dataset = tfrecord.torch.TFRecordDataset(
+    "/tmp/data.tfrecord", transform=decode_image)
 
 data = next(iter(dataset))
 print(data)
