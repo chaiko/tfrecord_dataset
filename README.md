@@ -16,7 +16,7 @@ pip install --editable ./
 
 ## Usage
 
-### Example
+### Reader & Writer
 
 ```python
 import tfrecord
@@ -30,14 +30,7 @@ for x in tfrecord.tfrecord_iterator('test.tfrecord'):
     print(bytes(x))
 ```
 
-### Index
-
-It's recommended to create an index file for each TFRecord file. Index file must be provided when using multiple workers, otherwise the loader may return duplicate records.
-```
-python -m tfrecord.tools.tfrecord2idx <tfrecord path> <index path>
-```
-
-### `TFRecordDataset` for PyTorch
+### `TFRecordDataset`
 
 Use `TFRecordDataset` to read TFRecord files in PyTorch.
 
@@ -50,6 +43,43 @@ loader = torch.utils.data.DataLoader(dataset, batch_size=2)
 
 data = next(iter(loader))
 print(data)
+```
+
+#### Transforming input data
+
+The reader reads TFRecord payloads as bytes. You can optionally pass a callable
+to the `transform` argument for post processing into the desired format, as
+shown in the example above.
+
+Here is another example for reading and decoding images:
+
+```python
+import tfrecord
+import cv2
+
+def decode_image(data):
+    # get BGR image from bytes
+    return {'image':  cv2.imdecode(data, cv2.IMREAD_COLOR)}
+
+dataset = tfrecord.torch.TFRecordDataset(
+    'data.tfrecord', transform=decode_image)
+
+data = next(iter(dataset))
+print(data)
+```
+
+#### Shuffling the data
+
+`TFRecordDataset` can automatically shuffle the data when you provide a queue size.
+```
+dataset = TFRecordDataset(..., shuffle_queue_size=1024)
+```
+
+#### Index
+
+It's recommended to create an index file for each TFRecord file. Index file must be provided when using multiple workers, otherwise the loader may return duplicate records.
+```
+python -m tfrecord.tools.tfrecord2idx <tfrecord path> <index path>
 ```
 
 ### `MultiTFRecordDataset`
@@ -71,38 +101,11 @@ data = next(iter(loader))
 print(data)
 ```
 
-### Infinite and finite PyTorch dataset
+#### Infinite and finite dataset
 
 By default, `MultiTFRecordDataset` is infinite, meaning that it samples the data forever. You can make it finite by providing the appropriate flag
 ```
 dataset = MultiTFRecordDataset(..., infinite=False)
-```
-
-### Shuffling the data
-
-Both TFRecordDataset and MultiTFRecordDataset automatically shuffle the data when you provide a queue size.
-```
-dataset = TFRecordDataset(..., shuffle_queue_size=1024)
-```
-
-### Transforming input data
-
-You can optionally pass a function as `transform` argument to perform post processing of features before returning.
-This can for example be used to decode images or normalize colors to a certain range or pad variable length sequence.
-
-```python
-import tfrecord
-import cv2
-
-def decode_image(data):
-    # get BGR image from bytes
-    return {'image':  cv2.imdecode(data, -1)}
-
-dataset = tfrecord.torch.TFRecordDataset(
-    "/tmp/data.tfrecord", transform=decode_image)
-
-data = next(iter(dataset))
-print(data)
 ```
 
 ## Acknowledge
