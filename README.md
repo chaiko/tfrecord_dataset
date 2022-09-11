@@ -36,7 +36,7 @@ Use `TFRecordDataset` to read TFRecord files in PyTorch.
 
 ```python
 import torch
-from tfrecord.torch.dataset import TFRecordDataset
+from tfrecord.torch import TFRecordDataset
 
 dataset = TFRecordDataset('test.tfrecord', transform=lambda x: len(x))
 loader = torch.utils.data.DataLoader(dataset, batch_size=2)
@@ -88,7 +88,7 @@ Use `MultiTFRecordDataset` to read multiple TFRecord files. This class samples f
 
 ```python
 import torch
-from tfrecord.torch.dataset import MultiTFRecordDataset
+from tfrecord.torch import MultiTFRecordDataset
 
 dataset = MultiTFRecordDataset(
     data_pattern='test-{}-of-00008',
