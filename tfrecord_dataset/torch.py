@@ -5,8 +5,8 @@ import typing
 import numpy as np
 import torch.utils.data
 
-from tfrecord import reader
-from tfrecord import iterator_utils
+from tfrecord_dataset import reader
+from tfrecord_dataset import iterator_utils
 
 
 class TFRecordDataset(torch.utils.data.IterableDataset):

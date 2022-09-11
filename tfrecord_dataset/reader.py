@@ -9,7 +9,7 @@ import typing
 
 import numpy as np
 
-from tfrecord import iterator_utils
+from tfrecord_dataset import iterator_utils
 
 
 def tfrecord_iterator(
