@@ -1,18 +1,22 @@
-# TFRecord reader, writer, and PyTorch support
+# TFRecord reader, writer, and PyTorch Dataset
 
-This library allows reading and writing [TFRecord](https://www.tensorflow.org/tutorials/load_data/tfrecord#tfrecords_format_details) files efficiently in python. The library also provides an IterableDataset reader of TFRecord files for PyTorch. Currently uncompressed and compressed gzip TFRecords are supported.
+This library allows reading and writing [TFRecord](https://www.tensorflow.org/tutorials/load_data/tfrecord#tfrecords_format_details) files efficiently in Python, and provides an `IterableDataset` interface for TFRecord files in PyTorch. Both uncompressed and compressed gzip TFRecord are supported.
+
+This library is modified from [`tfrecord`](https://pypi.org/project/tfrecord/), to remove its binding to `tf.Example` and support generic TFRecord data.
 
 ## Installation
 
-<!--
-```pip3 install tfrecord```
--->
+```shell
+pip install tfrecord-dataset
+```
 
+<!--
 ```shell
 git clone https://github.com/chaiko/tfrecord_dataset
 cd tfrecord_dataset
-pip install --editable ./
+pip install --editable .
 ```
+-->
 
 ## Usage
 
@@ -30,7 +34,7 @@ for x in tfr.tfrecord_iterator('test.tfrecord'):
     print(bytes(x))
 ```
 
-### `TFRecordDataset`
+### TFRecordDataset
 
 Use `TFRecordDataset` to read TFRecord files in PyTorch.
 
@@ -48,30 +52,24 @@ print(data)
 #### Transforming input data
 
 The reader reads TFRecord payloads as bytes. You can optionally pass a callable
-to the `transform` argument for post processing into the desired format, as
+as the `transform` argument for post processing into the desired format, as
 shown in the example above.
 
 Here is another example for reading and decoding images:
 
 ```python
-from tfrecord_dataset.torch import TFRecordDataset
 import cv2
 
-def decode_image(data):
-    # get BGR image from bytes
-    return {'image':  cv2.imdecode(data, cv2.IMREAD_COLOR)}
-
 dataset = TFRecordDataset(
-    'data.tfrecord', transform=decode_image)
-
-data = next(iter(dataset))
-print(data)
+    'data.tfrecord',
+    transform=lambda x: {'image':  cv2.imdecode(x, cv2.IMREAD_COLOR)})
 ```
 
 #### Shuffling the data
 
 `TFRecordDataset` can automatically shuffle the data when you provide a queue size.
-```
+
+```python
 dataset = TFRecordDataset(..., shuffle_queue_size=1024)
 ```
 
@@ -82,7 +80,7 @@ It's recommended to create an index file for each TFRecord file. Index file must
 python -m tfrecord_dataset.tools.tfrecord2idx <tfrecord path> <index path>
 ```
 
-### `MultiTFRecordDataset`
+### MultiTFRecordDataset
 
 Use `MultiTFRecordDataset` to read multiple TFRecord files. This class samples from given TFRecord files with given probability.
 
@@ -104,10 +102,11 @@ print(data)
 #### Infinite and finite dataset
 
 By default, `MultiTFRecordDataset` is infinite, meaning that it samples the data forever. You can make it finite by providing the appropriate flag
-```
+
+```python
 dataset = MultiTFRecordDataset(..., infinite=False)
 ```
 
-## Acknowledge
+## Acknowledgements
 
 This repo is forked from https://github.com/vahidk/tfrecord.
