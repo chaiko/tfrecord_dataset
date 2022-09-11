@@ -12,9 +12,14 @@ pip install tfrecord-dataset
 
 <!--
 ```shell
+# Install locally:
 git clone https://github.com/chaiko/tfrecord_dataset
 cd tfrecord_dataset
 pip install --editable .
+
+# Release
+python -m build
+python -m twine upload dist/*
 ```
 -->
 
@@ -49,11 +54,12 @@ data = next(iter(loader))
 print(data)
 ```
 
-#### Transforming input data
+#### Data transformation
 
-The reader reads TFRecord payloads as bytes. You can optionally pass a callable
-as the `transform` argument for post processing into the desired format, as
-shown in the example above.
+The reader reads TFRecord payload as bytes. You can pass a callable as the
+`transform` argument for parsing the bytes into the desired format, as
+shown in the simple example above. You can use such transformation for parsing
+serialized structured data, e.g. protobuf, numpy arrays, images, etc.
 
 Here is another example for reading and decoding images:
 

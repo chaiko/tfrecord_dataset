@@ -6,7 +6,7 @@ with open('README.md') as f:
 
 setuptools.setup(
     name='tfrecord_dataset',
-    version='0.1.0',
+    version='0.1.1',
     description='TFRecord reader, writer, and PyTorch Dataset.',
     url='https://github.com/chaiko/tfrecord_dataset',
     long_description=long_description,
