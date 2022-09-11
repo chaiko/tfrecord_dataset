@@ -9,8 +9,8 @@ This library allows reading and writing [TFRecord](https://www.tensorflow.org/tu
 -->
 
 ```shell
-git clone https://github.com/chaiko/tfrecord
-cd tfrecord
+git clone https://github.com/chaiko/tfrecord_dataset
+cd tfrecord_dataset
 pip install --editable ./
 ```
 
@@ -19,14 +19,14 @@ pip install --editable ./
 ### Basic read & write
 
 ```python
-import tfrecord
+import tfrecord_dataset as tfr
 
-writer = tfrecord.TFRecordWriter('test.tfrecord')
+writer = tfr.TFRecordWriter('test.tfrecord')
 writer.write(b'Hello world!')
 writer.write(b'This is a test.')
 writer.close()
 
-for x in tfrecord.tfrecord_iterator('test.tfrecord'):
+for x in tfr.tfrecord_iterator('test.tfrecord'):
     print(bytes(x))
 ```
 
@@ -36,7 +36,7 @@ Use `TFRecordDataset` to read TFRecord files in PyTorch.
 
 ```python
 import torch
-from tfrecord.torch import TFRecordDataset
+from tfrecord_dataset.torch import TFRecordDataset
 
 dataset = TFRecordDataset('test.tfrecord', transform=lambda x: len(x))
 loader = torch.utils.data.DataLoader(dataset, batch_size=2)
@@ -54,14 +54,14 @@ shown in the example above.
 Here is another example for reading and decoding images:
 
 ```python
-import tfrecord
+from tfrecord_dataset.torch import TFRecordDataset
 import cv2
 
 def decode_image(data):
     # get BGR image from bytes
     return {'image':  cv2.imdecode(data, cv2.IMREAD_COLOR)}
 
-dataset = tfrecord.torch.TFRecordDataset(
+dataset = TFRecordDataset(
     'data.tfrecord', transform=decode_image)
 
 data = next(iter(dataset))
@@ -79,7 +79,7 @@ dataset = TFRecordDataset(..., shuffle_queue_size=1024)
 
 It's recommended to create an index file for each TFRecord file. Index file must be provided when using multiple workers, otherwise the loader may return duplicate records.
 ```
-python -m tfrecord.tools.tfrecord2idx <tfrecord path> <index path>
+python -m tfrecord_dataset.tools.tfrecord2idx <tfrecord path> <index path>
 ```
 
 ### `MultiTFRecordDataset`
@@ -88,7 +88,7 @@ Use `MultiTFRecordDataset` to read multiple TFRecord files. This class samples f
 
 ```python
 import torch
-from tfrecord.torch import MultiTFRecordDataset
+from tfrecord_dataset.torch import MultiTFRecordDataset
 
 dataset = MultiTFRecordDataset(
     data_pattern='test-{}-of-00008',
