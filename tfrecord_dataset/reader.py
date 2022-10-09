@@ -127,10 +127,13 @@ def multi_tfrecord_iterator(
     it: iterator
         A repeating iterator that generates batches of data.
     """
-  iters = [functools.partial(tfrecord_iterator, data_path=data_pattern.format(split),
-                           index_path=index_pattern.format(split) \
-                               if index_pattern is not None else None,
-                           compression_type=compression_type)
-         for split in splits.keys()]
+  iters = [
+      functools.partial(
+          tfrecord_iterator,
+          data_path=data_pattern.format(split),
+          index_path=index_pattern.format(split) if index_pattern is not None else None,
+          compression_type=compression_type)
+      for split in splits.keys()
+  ]
   return iterator_utils.sample_iterators(
       iters, list(splits.values()), infinite=infinite)
