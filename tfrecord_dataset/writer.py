@@ -2,7 +2,6 @@
 
 import io
 import struct
-import typing
 
 import crc32c
 import numpy as np

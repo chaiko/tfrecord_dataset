@@ -3,8 +3,8 @@
 import typing
 
 import numpy as np
-
 import torch.utils.data
+
 from tfrecord_dataset import iterator_utils, reader
 
 

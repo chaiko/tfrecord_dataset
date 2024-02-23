@@ -53,8 +53,7 @@ def sample_iterators(iterators: typing.List[typing.Iterator],
         ratios = ratios / ratios.sum()
 
 
-def shuffle_iterator(iterator: typing.Iterator,
-                     queue_size: int) -> typing.Iterable[typing.Any]:
+def shuffle_iterator(iterator: typing.Iterator, queue_size: int) -> typing.Iterable[typing.Any]:
   """Shuffle elements contained in an iterator.
 
     Params:

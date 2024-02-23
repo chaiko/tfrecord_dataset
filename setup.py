@@ -1,8 +1,7 @@
 import setuptools
 
-
 with open('README.md') as f:
-    long_description = f.read()
+  long_description = f.read()
 
 setuptools.setup(
     name='tfrecord_dataset',
