@@ -54,6 +54,14 @@ data = next(iter(loader))
 print(data)
 ```
 
+#### Sharded TFRecords
+
+The following `TFRecordDataset` reads TFRecord data from 8 files in parallel. The name of these 8 files match pattern `data-0000?-of-00008`.
+
+```python
+dataset = TFRecordDataset(data@8', transform=lambda x: len(x))
+```
+
 #### Data transformation
 
 The reader reads TFRecord payload as bytes. You can pass a callable as the
@@ -73,44 +81,28 @@ dataset = TFRecordDataset(
 
 #### Shuffling the data
 
-`TFRecordDataset` can automatically shuffle the data when you provide a queue size.
+`TFRecordDataset` automatically shuffles the data with two mechanisms:
 
-```python
-dataset = TFRecordDataset(..., shuffle_queue_size=1024)
-```
+1. It reads data into a buffer, and randomly yield data from this buffer. Setting to buffer to a larger size (`buffer_size`) produces better randomness.
+
+2. For sharded TFRecords, it reads multiple files in parallel. Setting `file_parallelism` to a larger number also produces better randomness.
+
 
 #### Index
 
-It's recommended to create an index file for each TFRecord file. Index file must be provided when using multiple workers, otherwise the loader may return duplicate records.
+Index files are deprecated since v0.2.0. It's no longer required.
+
+Such index files can be generated with:
 ```
 python -m tfrecord_dataset.tools.tfrecord2idx <tfrecord path> <index path>
 ```
 
-### MultiTFRecordDataset
-
-Use `MultiTFRecordDataset` to read multiple TFRecord files. This class samples from given TFRecord files with given probability.
-
-```python
-import torch
-from tfrecord_dataset.torch import MultiTFRecordDataset
-
-dataset = MultiTFRecordDataset(
-    data_pattern='test-{}-of-00008',
-    index_pattern='test.idx-{}-of-00008',
-    splits={'00000': 0.8, '00003': 0.2},
-    transform=lambda x: len(x))
-loader = torch.utils.data.DataLoader(dataset, batch_size=8)
-
-data = next(iter(loader))
-print(data)
-```
-
 #### Infinite and finite dataset
 
-By default, `MultiTFRecordDataset` is infinite, meaning that it samples the data forever. You can make it finite by providing the appropriate flag
+By default, `TFRecordDataset` is infinite, meaning that it samples the data forever. You can make it finite by setting `num_epochs`.
 
 ```python
-dataset = MultiTFRecordDataset(..., infinite=False)
+dataset = TFRecordDataset(..., num_epochs=2)
 ```
 
 ## Acknowledgements
