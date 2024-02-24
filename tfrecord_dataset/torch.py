@@ -1,135 +1,111 @@
 """Load tfrecord files into torch datasets."""
 
-import typing
+import logging
+from typing import Any, Callable, Iterator, Optional
 
 import numpy as np
 import torch.utils.data
 
-from tfrecord_dataset import iterator_utils, reader
+from tfrecord_dataset import reader
 
 
 class TFRecordDataset(torch.utils.data.IterableDataset):
-  """Parses a TFRecord dataset into `IterableDataset` object.
+  """An IterableDataset reads from regular or sharded TFRecord files.
 
-    Params:
-    -------
-    data_path: str
-        The path to the tfrecords file.
-
-    index_path: str or None
-        The path to the index file.
-
-    shuffle_queue_size: int, optional, default=None
-        Length of buffer. Determines how many records are queued to
-        sample from.
-
-    transform : a callable, default = None
-        A function that takes in the input `bytes`, transforms it and returns a
-        desirable output.
-
-    compression_type: str, optional, default=None
-        The type of compression used for the tfrecord. Choose either
-        'gzip' or None.
-
-    """
-
-  def __init__(
-      self,
-      data_path: str,
-      index_path: typing.Optional[str] = None,
-      shuffle_queue_size: typing.Optional[int] = None,
-      transform: typing.Callable[[dict], typing.Any] = None,
-      compression_type: typing.Optional[str] = None,
-  ) -> None:
-    super().__init__()
-    self.data_path = data_path
-    self.index_path = index_path
-    self.shuffle_queue_size = shuffle_queue_size
-    self.transform = transform or (lambda x: x)
-    self.compression_type = compression_type
-
-  def __iter__(self):
-    worker_info = torch.utils.data.get_worker_info()
-    if worker_info is not None:
-      shard = worker_info.id, worker_info.num_workers
-      np.random.seed(worker_info.seed % np.iinfo(np.uint32).max)
-    else:
-      shard = None
-    it = reader.tfrecord_iterator(
-        data_path=self.data_path,
-        index_path=self.index_path,
-        shard=shard,
-        compression_type=self.compression_type)
-    if self.shuffle_queue_size:
-      it = iterator_utils.shuffle_iterator(it, self.shuffle_queue_size)
-    if self.transform:
-      it = map(self.transform, it)
-    return it
-
-
-class MultiTFRecordDataset(torch.utils.data.IterableDataset):
-  """Parse multiple (generic) TFRecords datasets into an `IterableDataset`
-    object, which contain `np.ndarrays`s.
-
-    Params:
-    -------
-    data_pattern: str
-        Input data path pattern.
-
-    index_pattern: str or None
-        Input index path pattern.
-
-    splits: dict
-        Dictionary of (key, value) pairs, where the key is used to
-        construct the data and index path(s) and the value determines
-        the contribution of each split to the batch.
-
-    shuffle_queue_size: int, optional, default=None
-        Length of buffer. Determines how many records are queued to
-        sample from.
-
-    transform : a callable, default = None
-        A function that takes in the input `bytes`, transforms it and returns a
-        desirable output.
-
-    compression_type: str, optional, default=None
-        The type of compression used for the tfrecord. Choose either
-        'gzip' or None.
-
-    infinite: bool, optional, default=True
-        Whether the Dataset should be infinite or not
-    """
+  This class is not thread-safe.
+  """
 
   def __init__(self,
-               data_pattern: str,
-               index_pattern: typing.Optional[str] = None,
-               *,
-               splits: typing.Dict[str, float],
-               shuffle_queue_size: typing.Optional[int] = None,
-               transform: typing.Callable[[dict], typing.Any] = None,
-               compression_type: typing.Optional[str] = None,
-               infinite: bool = True) -> None:
-    super().__init__()
-    self.data_pattern = data_pattern
-    self.index_pattern = index_pattern
-    self.splits = splits
-    self.shuffle_queue_size = shuffle_queue_size
-    self.transform = transform
-    self.compression_type = compression_type
-    self.infinite = infinite
+               file_pattern: str,
+               transform: Optional[Callable[[dict], Any]] = None,
+               file_parallelism: int = 8,
+               buffer_size: int = 256,
+               num_epochs: Optional[int] = None) -> None:
+    """Constructor.
 
-  def __iter__(self):
-    worker_info = torch.utils.data.get_worker_info()
-    if worker_info is not None:
-      np.random.seed(worker_info.seed % np.iinfo(np.uint32).max)
-    it = reader.multi_tfrecord_iterator(
-        data_pattern=self.data_pattern,
-        index_pattern=self.index_pattern,
-        splits=self.splits,
-        compression_type=self.compression_type,
-        infinite=self.infinite)
-    if self.shuffle_queue_size:
-      it = iterator_utils.shuffle_iterator(it, self.shuffle_queue_size)
-    if self.transform:
-      it = map(self.transform, it)
-    return it
+    Args:
+      file_pattern: file path or pattern to TFRecord files.
+      transform: Transformation to apply on the raw TFRecord data.
+      file_parallelism: Number of files to read in parallel.
+      buffer_size: The size of the reading buffer.
+      num_epochs: Reads this many of epoch. Set None for infinitely reading.
+    """
+    super().__init__()
+
+    assert '*' not in file_pattern
+    assert '?' not in file_pattern
+
+    if '@' in file_pattern:
+      stem, num_shards = file_pattern.split('@', 2)
+      num_shards = int(num_shards)
+      self.filenames = [f'{stem}-{i:05d}-of-{num_shards:05d}' for i in range(num_shards)]
+    else:
+      self.filenames = [file_pattern]
+
+    self.transform = transform or (lambda x: x)
+
+    self.file_parallelism = file_parallelism
+    self.buffer_size = buffer_size
+
+    self.epoch = 0
+    self.num_epochs = num_epochs
+
+    self.filename_queue = []
+    self.record_buffer = []  # buffer of processed records (tranform applied)
+    self.iters = []  # iterators of raw records
+
+  def _read_one_record(self):
+    """Reads one record into the buffer and applies the transform."""
+    while self.iters:
+      idx = np.random.choice(len(self.iters))
+      try:
+        data = next(self.iters[idx])
+      except StopIteration:
+        if self.filename_queue:
+          filename = self.filename_queue.pop()
+          logging.info(f'Processing file: {filename}')
+          self.iters[idx] = reader.tfrecord_iterator(filename)
+        else:
+          del self.iters[idx]
+      else:
+        self.record_buffer.append(self.transform(data))
+        break
+
+  def _init_epoch(self, epoch: int):
+    """Initializes epoch and loads buffer."""
+    self.epoch = epoch
+    logging.info(f'Start epoch {epoch}')
+
+    self.filename_queue = self.filenames.copy()
+    np.random.shuffle(self.filename_queue)
+
+    self.iters = []
+    while len(self.iters) < self.file_parallelism and self.filename_queue:
+      filename = self.filename_queue.pop()
+      logging.info(f'Processing file: {filename}')
+      self.iters.append(reader.tfrecord_iterator(filename))
+
+    while len(self.record_buffer) < self.buffer_size and self.iters:
+      self._read_one_record()
+
+  def __iter__(self) -> Iterator:
+    self._init_epoch(epoch=0)
+    return self
+
+  def __next__(self):
+    if not self.record_buffer:
+      if not self.num_epochs or self.epoch + 1 < self.num_epochs:
+        self._init_epoch(epoch=self.epoch + 1)
+      else:
+        raise StopIteration
+
+    self._read_one_record()
+
+    if not self.record_buffer:
+      raise StopIteration
+    else:
+      idx = np.random.choice(len(self.record_buffer))
+      record = self.record_buffer[idx]
+      self.record_buffer[idx] = self.record_buffer[-1]
+      self.record_buffer.pop()
+      return record
